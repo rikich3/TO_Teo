@@ -1,75 +1,137 @@
-import java.util.concurrent.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 interface Funcion {
-    double evaluar(double x);
+  double evaluar(double x);
 }
 
 class FuncionEjemplo implements Funcion {
-    public double evaluar(double x) {
-        return 2 * x * x + 3 * x + 0.5;
+
+  @Override
+  public double evaluar(double x) {
+    try {
+      return 2 * x * x + 3 * x + 0.5;
+    } catch (ArithmeticException e) {
+      System.err.println("Error aritmético: " + e.getMessage());
+    } catch (IllegalArgumentException e) {
+      System.err.println("Argumento inválido: " + e.getMessage());
+    } catch (Exception e) {
+      System.err.println("Error inesperado en evaluar(): " + e.getMessage());
     }
+    return Double.NaN;
+  }
 }
 
+// --- Tarea que calcula el área de un trapecio ---
 class TareaTrapecio implements Callable<Double> {
-    private double x1, x2, base;
-    private Funcion funcion;
 
-    public TareaTrapecio(double x1, double x2, double base, Funcion funcion) {
-        this.x1 = x1;
-        this.x2 = x2;
-        this.base = base;
-        this.funcion = funcion;
-    }
+  private double x1, x2, base;
+  private Funcion funcion;
 
-    @Override
-    public Double call() {
-        return (base / 2.0) * (funcion.evaluar(x1) + funcion.evaluar(x2));
+  public TareaTrapecio(double x1, double x2, double base, Funcion funcion) {
+    this.x1 = x1;
+    this.x2 = x2;
+    this.base = base;
+    this.funcion = funcion;
+  }
+
+  @Override
+  public Double call() {
+    try {
+      if (funcion == null) throw new NullPointerException("La función no puede ser nula");
+      if (base <= 0) throw new IllegalArgumentException("La base del trapecio debe ser positiva");
+
+      double y1 = funcion.evaluar(x1);
+      double y2 = funcion.evaluar(x2);
+
+      if (Double.isNaN(y1) || Double.isNaN(y2)) throw new ArithmeticException(
+        "Evaluación de función inválida (NaN)"
+      );
+
+      return (base / 2.0) * (y1 + y2);
+    } catch (NullPointerException | IllegalArgumentException | ArithmeticException e) {
+      System.err.printf("Error en tarea [x1=%.4f, x2=%.4f]: %s%n", x1, x2, e.getMessage());
+      return Double.NaN;
+    } catch (Exception e) {
+      System.err.printf(
+        "Error inesperado en tarea [x1=%.4f, x2=%.4f]: %s%n",
+        x1,
+        x2,
+        e.getMessage()
+      );
+      return Double.NaN;
     }
+  }
 }
 
+// --- Clase principal ---
 public class TrapecioPool {
-    public static void main(String[] args) throws Exception {
-        double limiteInferior = 2, limiteSuperior = 20;
-        double areaAnterior = -1;
-        boolean detener = false;
-        int numTrapecios = 1;
 
-        int numNucleos = Runtime.getRuntime().availableProcessors();
-        Funcion funcion = new FuncionEjemplo();
+  public static void main(String[] args) {
+    double limiteInferior = 2,
+      limiteSuperior = 20;
+    double areaAnterior = -1;
+    boolean detener = false;
+    int numTrapecios = 1;
 
-        while (!detener) {
-            double base = (limiteSuperior - limiteInferior) / numTrapecios;
+    int numNucleos = Runtime.getRuntime().availableProcessors();
+    Funcion funcion = new FuncionEjemplo();
 
-            //Creamos un pool con los nucleos que tiene el host
-            ExecutorService ejecutor = Executors.newFixedThreadPool(numNucleos);
-            List<Future<Double>> resultados = new ArrayList<>();
+    System.out.printf("Usando %d núcleos disponibles.%n", numNucleos);
 
-            for (int i = 0; i < numTrapecios; i++) {
-                double xi = limiteInferior + i * base;
-                double xf = xi + base;
-                resultados.add(ejecutor.submit(new TareaTrapecio(xi, xf, base, funcion)));
-            }
+    while (!detener) {
+      double base = (limiteSuperior - limiteInferior) / numTrapecios;
 
-            double area = 0;
-            for (Future<Double> futuro : resultados) {
-                area += futuro.get();
-            }
+      ExecutorService ejecutor = Executors.newFixedThreadPool(numNucleos);
+      List<Future<Double>> resultados = new ArrayList<>();
 
-            ejecutor.shutdown();
-
-            System.out.printf("N = %d -> rea aproximada = %.6f%n", numTrapecios, area);
-
-            double areaRedondeada = Math.round(area * 10000.0) / 10000.0;
-            double areaAnteriorRedondeada = Math.round(areaAnterior * 10000.0) / 10000.0;
-
-            if (areaRedondeada == areaAnteriorRedondeada) {
-                detener = true;
-                System.out.println("\nSe detuvo porque el rea ya no cambia en 4 decimales.");
-            }
-
-            areaAnterior = area;
-            numTrapecios++;
+      try {
+        for (int i = 0; i < numTrapecios; i++) {
+          double xi = limiteInferior + i * base;
+          double xf = xi + base;
+          resultados.add(ejecutor.submit(new TareaTrapecio(xi, xf, base, funcion)));
         }
+
+        double area = 0.0;
+        for (Future<Double> futuro : resultados) {
+          try {
+            double valor = futuro.get();
+            if (!Double.isNaN(valor)) {
+              area += valor;
+            }
+          } catch (ExecutionException e) {
+            System.err.println("Error en ejecución de una tarea: " + e.getCause());
+          } catch (InterruptedException e) {
+            System.err.println("Ejecución interrumpida: " + e.getMessage());
+            Thread.currentThread().interrupt(); // buena práctica
+          }
+        }
+
+        ejecutor.shutdown();
+
+        System.out.printf("N = %d -> Área aproximada = %.6f%n", numTrapecios, area);
+
+        double areaRedondeada = Math.round(area * 10000.0) / 10000.0;
+        double areaAnteriorRedondeada = Math.round(areaAnterior * 10000.0) / 10000.0;
+
+        if (areaRedondeada == areaAnteriorRedondeada) {
+          detener = true;
+          System.out.println("\nSe detuvo porque el área ya no cambia en 4 decimales.");
+        }
+
+        areaAnterior = area;
+        numTrapecios++;
+      } catch (IllegalArgumentException e) {
+        System.err.println("Error de argumento en el cálculo principal: " + e.getMessage());
+        detener = true;
+      } catch (Exception e) {
+        System.err.println("Error inesperado en el cálculo principal: " + e.getMessage());
+        detener = true;
+      } finally {
+        if (!ejecutor.isShutdown()) {
+          ejecutor.shutdownNow();
+        }
+      }
     }
+  }
 }
