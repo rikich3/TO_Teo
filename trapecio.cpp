@@ -5,6 +5,10 @@
 
 using namespace std;
 
+inline double calcularAreaTrapecio(const double h, const double y1, const double y2) {
+    return (h / 2) * (y1 + y2);
+}
+
 class TrapecioHilo {
 private:
     const double a, b;
@@ -33,6 +37,10 @@ public:
 
 double funcionEjemplo(double x) {
     return 2 * x * x + 3 * x + 0.5;
+}
+
+inline double evaluarFuncion(double (*f)(double), const double x) {
+    return f(x);
 }
 
 int main() {
