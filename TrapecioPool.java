@@ -1,28 +1,12 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 
 interface Funcion {
   double evaluar(double x);
 }
 
-class FuncionEjemplo implements Funcion {
 
-  @Override
-  public double evaluar(double x) {
-    try {
-      return 2 * x * x + 3 * x + 0.5;
-    } catch (ArithmeticException e) {
-      System.err.println("Error aritmético: " + e.getMessage());
-    } catch (IllegalArgumentException e) {
-      System.err.println("Argumento inválido: " + e.getMessage());
-    } catch (Exception e) {
-      System.err.println("Error inesperado en evaluar(): " + e.getMessage());
-    }
-    return Double.NaN;
-  }
-}
-
-// --- Tarea que calcula el área de un trapecio ---
 class TareaTrapecio implements Callable<Double> {
 
   private double x1, x2, base;
@@ -64,7 +48,7 @@ class TareaTrapecio implements Callable<Double> {
   }
 }
 
-// --- Clase principal ---
+
 public class TrapecioPool {
 
   public static void main(String[] args) {
@@ -75,7 +59,8 @@ public class TrapecioPool {
     int numTrapecios = 1;
 
     int numNucleos = Runtime.getRuntime().availableProcessors();
-    Funcion funcion = new FuncionEjemplo();
+        // Se reemplaza new FuncionEjemplo() por la expresión lambda.
+    Funcion funcion = x -> 2 * x * x + 3 * x + 0.5;
 
     System.out.printf("Usando %d núcleos disponibles.%n", numNucleos);
 
@@ -103,7 +88,7 @@ public class TrapecioPool {
             System.err.println("Error en ejecución de una tarea: " + e.getCause());
           } catch (InterruptedException e) {
             System.err.println("Ejecución interrumpida: " + e.getMessage());
-            Thread.currentThread().interrupt(); // buena práctica
+            Thread.currentThread().interrupt();
           }
         }
 

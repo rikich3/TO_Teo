@@ -2,6 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "java",
+      "name": "TrapecioPool",
+      "request": "launch",
+      "mainClass": "TrapecioPool",
+      "projectName": "TO_Teo_2e0d16ad"
+    },
+    {
       "name": "C/C++ Runner: Debug Session",
       "type": "cppdbg",
       "request": "launch",
