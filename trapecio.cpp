@@ -2,6 +2,7 @@
 #include <thread>
 #include <vector>
 #include <cmath>
+#include <algorithm>  //para std::min y std::max
 
 using namespace std;
 
@@ -30,6 +31,14 @@ private:
     // UTILIDAD: Permite imprimir el estado completo del objeto de forma elegante
     // OPTIMIZACIÓN: Acceso directo a todos los miembros sin múltiples getters
     friend ostream& operator<<(ostream& os, const TrapecioHilo& trapecio);
+
+    // SOBRECARGA DE OPERADOR
+    // FUNCIÓN AMIGA: Sobrecarga del operador de suma (+)
+    // UTILIDAD: Permite combinar dos objetos TrapecioHilo de forma intuitiva.
+    // LEGIBILIDAD: Facilita una sintaxis natural y legible (ej: total = hilo1 + hilo2).
+    // ABSTRACCIÓN: Encapsula la lógica de fusión de resultados en un operador estándar.
+    friend TrapecioHilo operator+(const TrapecioHilo& lhs, const TrapecioHilo& rhs);
+
 
 public:
     TrapecioHilo(const double a, const double b, const int n, double (*f)(double))
@@ -90,6 +99,24 @@ ostream& operator<<(ostream& os, const TrapecioHilo& trapecio) {
     return os;
 }
 
+// IMPLEMENTACION DE SOBRECARGA DE OPERADOR
+// VENTAJA: Proporciona una forma semántica y expresiva de combinar los resultados de dos cálculos.
+//  LÓGICA: Crea un nuevo objeto 'TrapecioHilo' que representa la unión de los dos operandos:
+// 1. El intervalo combinado va desde el 'a' mínimo al 'b' máximo.
+// 2. Las subdivisiones se suman.
+// 3. El resultado final es la suma de los resultados individuales.
+TrapecioHilo operator+(const TrapecioHilo& lhs, const TrapecioHilo& rhs) {
+    double nuevo_a = min(lhs.a, rhs.a); 
+    double nuevo_b = max(lhs.b, rhs.b); 
+    int nuevo_n = lhs.n + rhs.n;
+    TrapecioHilo combinado(nuevo_a, nuevo_b, nuevo_n, lhs.funcion);
+    
+    combinado.resultado = lhs.resultado + rhs.resultado;
+    
+    return combinado;
+}
+
+
 int main() {
     const double a = 2.0, b = 20.0;
     const int subdivisiones = 10000;
@@ -121,6 +148,23 @@ int main() {
     cout << "Area aproximada con " << numHilos << " hilos: " 
          << fixed << areaTotal << endl;
     
+    // --- DEMOSTRACIÓN DE LA SOBRECARGA DEL OPERADOR '+' ---
+    cout << "\n--- Demostracion de Sobrecarga del Operador '+' ---" << endl;
+    if (hilos.size() >= 2) {
+        // Aquí se invoca el operador '+' sobrecargado. La sintaxis es limpia y natural.
+        TrapecioHilo combinado_0_1 = *hilos[0] + *hilos[1];
+        
+        cout << "Datos del Hilo 0: " << *hilos[0] << endl;
+        cout << "Datos del Hilo 1: " << *hilos[1] << endl;
+        // Se usa el operador '<<' sobrecargado para imprimir el objeto combinado.
+        cout << "Resultado de Hilo 0 + Hilo 1: " << combinado_0_1 << endl;
+        
+        // Verificación manual para demostrar que la suma de los resultados es correcta.
+        double sumaManual = hilos[0]->getResultado() + hilos[1]->getResultado();
+        cout << "Comprobacion (suma manual de resultados): " << sumaManual << endl;
+    }
+    // --- FIN DE LA DEMOSTRACIÓN ---     
+
     // UTILIZANDO FUNCIÓN AMIGA: operador<< para mostrar detalles de cada hilo
     cout << "\nDetalles de cada hilo (usando funcion amiga operator<<):" << endl;
     for (size_t i = 0; i < hilos.size(); i++) {
